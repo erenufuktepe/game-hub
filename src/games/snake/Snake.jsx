@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import BackLink from '../../components/BackLink';
+import { useEffect, useRef, useState } from "react";
+import BackLink from "../../components/BackLink";
 
 const CELL = 20;
-const GRID = 20; 
+const GRID = 20;
 
 // Speed (ms per tick) gets a bit faster as the snake grows
 function speedForLength(len) {
@@ -21,13 +21,38 @@ export default function Snake() {
 
   const [soundOn, setSoundOn] = useState(true);
   const audioCtxRef = useRef(null);
+  const touchStart = useRef(null);
+
+  function onTouchStart(e) {
+    if (!e.touches?.[0]) return;
+    ensureAudioReady();
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+
+  function onTouchMove(e) {
+    if (!touchStart.current || !e.touches?.[0]) return;
+    const dx = e.touches[0].clientX - touchStart.current.x;
+    const dy = e.touches[0].clientY - touchStart.current.y;
+    const mag = Math.hypot(dx, dy);
+    if (mag < 24) return; // small threshold to avoid accidental swipes
+    const absX = Math.abs(dx),
+      absY = Math.abs(dy);
+    let next = lastDirRef.current;
+    if (absX > absY) next = { x: dx > 0 ? 1 : -1, y: 0 };
+    else next = { x: 0, y: dy > 0 ? 1 : -1 };
+
+    const { x: lx, y: ly } = lastDirRef.current;
+    if (lx + next.x !== 0 || ly + next.y !== 0) dirRef.current = next;
+
+    touchStart.current = null;
+  }
 
   function ensureAudioReady() {
     if (!audioCtxRef.current) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (Ctx) audioCtxRef.current = new Ctx();
     }
-    if (audioCtxRef.current?.state === 'suspended') {
+    if (audioCtxRef.current?.state === "suspended") {
       audioCtxRef.current.resume();
     }
   }
@@ -38,7 +63,7 @@ export default function Snake() {
     if (!ctx) return;
     const o = ctx.createOscillator();
     const g = ctx.createGain();
-    o.type = 'square';
+    o.type = "square";
     o.frequency.value = 880; // nice little "coin" blip
     g.gain.value = 0.06;
     o.connect(g).connect(ctx.destination);
@@ -49,16 +74,22 @@ export default function Snake() {
     o.stop(now + 0.09);
   }
 
-
   function newFood(snake) {
     while (true) {
-      const f = { x: Math.floor(Math.random() * GRID), y: Math.floor(Math.random() * GRID) };
-      if (!snake.some(s => s.x === f.x && s.y === f.y)) return f;
+      const f = {
+        x: Math.floor(Math.random() * GRID),
+        y: Math.floor(Math.random() * GRID),
+      };
+      if (!snake.some((s) => s.x === f.x && s.y === f.y)) return f;
     }
   }
 
   function reset() {
-    const snake = [{ x: 8, y: 10 }, { x: 7, y: 10 }, { x: 6, y: 10 }];
+    const snake = [
+      { x: 8, y: 10 },
+      { x: 7, y: 10 },
+      { x: 6, y: 10 },
+    ];
     stateRef.current = { snake, food: newFood(snake), score: 0, dead: false };
     dirRef.current = { x: 1, y: 0 };
     lastDirRef.current = { x: 1, y: 0 };
@@ -78,10 +109,10 @@ export default function Snake() {
       ensureAudioReady();
       const k = e.key.toLowerCase();
       let next = lastDirRef.current;
-      if (k === 'arrowup' || k === 'w') next = { x: 0, y: -1 };
-      if (k === 'arrowdown' || k === 's') next = { x: 0, y: 1 };
-      if (k === 'arrowleft' || k === 'a') next = { x: -1, y: 0 };
-      if (k === 'arrowright' || k === 'd') next = { x: 1, y: 0 };
+      if (k === "arrowup" || k === "w") next = { x: 0, y: -1 };
+      if (k === "arrowdown" || k === "s") next = { x: 0, y: 1 };
+      if (k === "arrowleft" || k === "a") next = { x: -1, y: 0 };
+      if (k === "arrowright" || k === "d") next = { x: 1, y: 0 };
 
       // prevent reversing instantly
       const { x: lx, y: ly } = lastDirRef.current;
@@ -91,18 +122,22 @@ export default function Snake() {
     };
     const onClick = () => ensureAudioReady();
 
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('mousedown', onClick);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onClick);
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
 
     return () => {
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('mousedown', onClick);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onClick);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
       clearInterval(loopRef.current);
     };
   }, []);
 
   function tick() {
-    const ctx = canvasRef.current.getContext('2d');
+    const ctx = canvasRef.current.getContext("2d");
     const { snake } = stateRef.current;
     const dir = dirRef.current;
 
@@ -122,7 +157,10 @@ export default function Snake() {
       snake.unshift(head);
 
       // food
-      if (head.x === stateRef.current.food.x && head.y === stateRef.current.food.y) {
+      if (
+        head.x === stateRef.current.food.x &&
+        head.y === stateRef.current.food.y
+      ) {
         stateRef.current.food = newFood(snake);
         stateRef.current.score++;
         // speed up with growth
@@ -139,25 +177,42 @@ export default function Snake() {
 
     // subtle grid
     ctx.globalAlpha = 0.1;
-    ctx.strokeStyle = '#334155';
+    ctx.strokeStyle = "#334155";
     for (let i = 0; i <= GRID; i++) {
-      ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, GRID * CELL); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(GRID * CELL, i * CELL); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(i * CELL, 0);
+      ctx.lineTo(i * CELL, GRID * CELL);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, i * CELL);
+      ctx.lineTo(GRID * CELL, i * CELL);
+      ctx.stroke();
     }
     ctx.globalAlpha = 1;
 
     // FOOD: circle
     const f = stateRef.current.food;
-    ctx.fillStyle = '#f97316';
+    ctx.fillStyle = "#f97316";
     ctx.beginPath();
-    ctx.arc(f.x * CELL + CELL / 2, f.y * CELL + CELL / 2, CELL * 0.4, 0, Math.PI * 2);
+    ctx.arc(
+      f.x * CELL + CELL / 2,
+      f.y * CELL + CELL / 2,
+      CELL * 0.4,
+      0,
+      Math.PI * 2
+    );
     ctx.fill();
 
     // SNAKE
-    ctx.fillStyle = '#60a5fa';
+    ctx.fillStyle = "#60a5fa";
     stateRef.current.snake.forEach((s, i) => {
       const pad = i === 0 ? 2 : 4;
-      ctx.fillRect(s.x * CELL + pad, s.y * CELL + pad, CELL - pad * 2, CELL - pad * 2);
+      ctx.fillRect(
+        s.x * CELL + pad,
+        s.y * CELL + pad,
+        CELL - pad * 2,
+        CELL - pad * 2
+      );
     });
   }
 
@@ -174,17 +229,35 @@ export default function Snake() {
     <div className="container">
       <BackLink />
       <h2 className="title">Snake</h2>
-      <p className="muted">Wrap‑around walls. Arrow keys / WASD. Score: {score}</p>
+      <p className="muted">
+        Wrap‑around walls. Arrow keys / WASD. Score: {score}
+      </p>
 
-      <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom: 8 }}>
-        <button className="btn" onClick={() => setSoundOn(s => !s)}>
-          {soundOn ? '🔊 Sound: On' : '🔈 Sound: Off'}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          marginBottom: 8,
+        }}
+      >
+        <button className="btn" onClick={() => setSoundOn((s) => !s)}>
+          {soundOn ? "🔊 Sound: On" : "🔈 Sound: Off"}
         </button>
-        {!running && dead && <button className="btn" onClick={handleRestart}>Restart</button>}
+        {!running && dead && (
+          <button className="btn" onClick={handleRestart}>
+            Restart
+          </button>
+        )}
       </div>
 
       <div className="center" onMouseDown={ensureAudioReady}>
-        <canvas ref={canvasRef} width={GRID * CELL} height={GRID * CELL} />
+        <canvas
+          className="responsive-canvas"
+          ref={canvasRef}
+          width={GRID * CELL}
+          height={GRID * CELL}
+        />
       </div>
     </div>
   );

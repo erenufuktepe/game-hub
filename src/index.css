@@ -115,9 +115,43 @@ canvas {
   gap: 12px;
 }
 
-.mark { font-weight: 800; }
-.mark.x { color: #a5b4fc; }
-.mark.o { color: #fca5a5; }
+.mark {
+  font-weight: 800;
+}
+.mark.x {
+  color: #a5b4fc;
+}
+.mark.o {
+  color: #fca5a5;
+}
 
-.row { grid-template-columns: repeat(3, min(110px, 26vw)); gap: 10px; }
-.square { width: min(110px, 26vw); height: min(110px, 26vw); font-size: clamp(32px, 9vw, 56px); }
+.row {
+  grid-template-columns: repeat(3, min(110px, 26vw));
+  gap: 10px;
+}
+.square {
+  width: min(110px, 26vw);
+  height: min(110px, 26vw);
+  font-size: clamp(32px, 9vw, 56px);
+}
+
+.responsive-canvas {
+  width: 100%;
+  height: auto;
+  max-width: 520px;
+} /* flappy/jumper */
+
+.square {
+  touch-action: manipulation;
+} /* faster taps, no delay */
+
+@media (max-width: 420px) {
+  .row {
+    gap: 6px;
+  }
+  .square {
+    width: 26vw;
+    height: 26vw;
+    font-size: 10vw;
+  }
+}
