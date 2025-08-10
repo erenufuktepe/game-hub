@@ -20,6 +20,7 @@ export default function Snake() {
   const stateRef = useRef(null);
 
   const [soundOn, setSoundOn] = useState(true);
+  const soundOnRef = useRef(true);
   const audioCtxRef = useRef(null);
   const touchStart = useRef(null);
 
@@ -58,7 +59,7 @@ export default function Snake() {
   }
 
   function playEat() {
-    if (!soundOn) return;
+    if (!soundOnRef.current) return;
     const ctx = audioCtxRef.current;
     if (!ctx) return;
     const o = ctx.createOscillator();
@@ -101,6 +102,10 @@ export default function Snake() {
   }
 
   useEffect(() => {
+    soundOnRef.current = soundOn;
+  }, [soundOn]);
+
+  useEffect(() => {
     reset();
     setRunning(true);
     startLoop(speedForLength(stateRef.current.snake.length));
@@ -124,8 +129,8 @@ export default function Snake() {
 
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onClick);
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
+    window.addEventListener("touchstart", onTouchStart, { passive: false });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
 
     return () => {
       window.removeEventListener("keydown", onKey);

@@ -35,6 +35,7 @@ export default function Jumper() {
   // refs to avoid stale closures
   const gameOverRef = useRef(false);
   const runningRef = useRef(false);
+  const soundOnRef = useRef(true);
 
   // audio
   const audioCtxRef = useRef(null);
@@ -48,7 +49,7 @@ export default function Jumper() {
   }
 
   function playJump() {
-    if (!soundOn || !audioCtxRef.current) return;
+    if (!soundOnRef.current || !audioCtxRef.current) return;
     const ctx = audioCtxRef.current;
     const o = ctx.createOscillator();
     const g = ctx.createGain();
@@ -101,6 +102,10 @@ export default function Jumper() {
   }
 
   useEffect(() => {
+    soundOnRef.current = soundOn;
+  }, [soundOn]);
+
+  useEffect(() => {
     initState(); // start paused
 
     const onKey = (e) => {
@@ -110,14 +115,20 @@ export default function Jumper() {
       }
     };
     const onClick = () => handleInput();
+    const onTouchStart = (e) => {
+      e.preventDefault();
+      handleInput();
+    };
 
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onClick);
+    window.addEventListener("touchstart", onTouchStart, { passive: false });
 
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("mousedown", onClick);
+      window.removeEventListener("touchstart", onTouchStart);
     };
   }, []);
 
@@ -262,7 +273,7 @@ export default function Jumper() {
       a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
     );
   }
-  
+
   function spawnObstacle(g) {
     const type = Math.random() < 0.65 ? "ground" : "flying";
     if (type === "ground") {
@@ -319,7 +330,12 @@ export default function Jumper() {
       </div>
 
       <div className="center">
-        <canvas ref={canvasRef} width={W} height={H} />
+        <canvas
+          className="responsive-canvas"
+          ref={canvasRef}
+          width={W}
+          height={H}
+        />
       </div>
     </div>
   );

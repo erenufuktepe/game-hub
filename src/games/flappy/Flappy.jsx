@@ -27,6 +27,7 @@ export default function Flappy() {
   const [soundOn, setSoundOn] = useState(true);
 
   // refs
+  const soundOnRef = useRef(true);
   const deadRef = useRef(false);
   const runningRef = useRef(false);
   const scoreRef = useRef(0);
@@ -41,9 +42,9 @@ export default function Flappy() {
     if (audioCtxRef.current?.state === "suspended")
       audioCtxRef.current.resume();
   }
-  
+
   function playFlap() {
-    if (!soundOn || !audioCtxRef.current) return;
+    if (!soundOnRef.current || !audioCtxRef.current) return;
     const ctx = audioCtxRef.current;
     const o = ctx.createOscillator();
     const g = ctx.createGain();
@@ -59,7 +60,7 @@ export default function Flappy() {
   }
 
   function playHit() {
-    if (!soundOn || !audioCtxRef.current) return;
+    if (!soundOnRef.current || !audioCtxRef.current) return;
     const ctx = audioCtxRef.current;
     const o = ctx.createOscillator();
     const g = ctx.createGain();
@@ -76,7 +77,7 @@ export default function Flappy() {
   }
 
   function playScore() {
-    if (!soundOn || !audioCtxRef.current) return;
+    if (!soundOnRef.current || !audioCtxRef.current) return;
     const ctx = audioCtxRef.current;
     const o = ctx.createOscillator();
     const g = ctx.createGain();
@@ -133,6 +134,10 @@ export default function Flappy() {
   }
 
   useEffect(() => {
+    soundOnRef.current = soundOn;
+  }, [soundOn]);
+
+  useEffect(() => {
     initState();
 
     const onKey = (e) => {
@@ -142,13 +147,20 @@ export default function Flappy() {
       }
     };
     const onClick = () => handleInput();
+    const onTouchStart = (e) => {
+      e.preventDefault();
+      handleInput();
+    };
 
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onClick);
+    window.addEventListener("touchstart", onTouchStart, { passive: false });
+
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("mousedown", onClick);
+      window.removeEventListener("touchstart", onTouchStart);
     };
   }, []);
 
@@ -306,7 +318,12 @@ export default function Flappy() {
       </div>
 
       <div className="center">
-        <canvas ref={canvasRef} width={W} height={H} />
+        <canvas
+          ref={canvasRef}
+          width={W}
+          height={H}
+          className="responsive-canvas"
+        />
       </div>
     </div>
   );
