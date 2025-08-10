@@ -2,8 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import BackLink from '../../components/BackLink';
 
 const CELL = 20;
-const GRID = 20; // 20x20 => 400px canvas
-const SPEED_MS = 100;
+const GRID = 20; 
+
+// Speed (ms per tick) gets a bit faster as the snake grows
+function speedForLength(len) {
+  // Base 100ms, +5ms faster every 3 segments, floor at 55ms
+  const faster = Math.floor((len - 3) / 3) * 5;
+  return Math.max(55, 100 - faster);
+}
 
 export default function Snake() {
   const canvasRef = useRef(null);
@@ -12,6 +18,37 @@ export default function Snake() {
   const dirRef = useRef({ x: 1, y: 0 });
   const lastDirRef = useRef({ x: 1, y: 0 });
   const stateRef = useRef(null);
+
+  const [soundOn, setSoundOn] = useState(true);
+  const audioCtxRef = useRef(null);
+
+  function ensureAudioReady() {
+    if (!audioCtxRef.current) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) audioCtxRef.current = new Ctx();
+    }
+    if (audioCtxRef.current?.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+  }
+
+  function playEat() {
+    if (!soundOn) return;
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'square';
+    o.frequency.value = 880; // nice little "coin" blip
+    g.gain.value = 0.06;
+    o.connect(g).connect(ctx.destination);
+    const now = ctx.currentTime;
+    o.start(now);
+    // quick decay
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+    o.stop(now + 0.09);
+  }
+
 
   function newFood(snake) {
     while (true) {
@@ -27,11 +64,18 @@ export default function Snake() {
     lastDirRef.current = { x: 1, y: 0 };
   }
 
+  function startLoop(intervalMs) {
+    clearInterval(loopRef.current);
+    loopRef.current = setInterval(() => tick(), intervalMs);
+  }
+
   useEffect(() => {
     reset();
     setRunning(true);
+    startLoop(speedForLength(stateRef.current.snake.length));
 
     const onKey = (e) => {
+      ensureAudioReady();
       const k = e.key.toLowerCase();
       let next = lastDirRef.current;
       if (k === 'arrowup' || k === 'w') next = { x: 0, y: -1 };
@@ -45,43 +89,46 @@ export default function Snake() {
         dirRef.current = next;
       }
     };
-    window.addEventListener('keydown', onKey);
+    const onClick = () => ensureAudioReady();
 
-    loopRef.current = setInterval(() => tick(), SPEED_MS);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mousedown', onClick);
+
     return () => {
       window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onClick);
       clearInterval(loopRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function tick() {
     const ctx = canvasRef.current.getContext('2d');
-    const { snake, food } = stateRef.current;
+    const { snake } = stateRef.current;
     const dir = dirRef.current;
 
-    // move
-    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+    // move → WRAP‑AROUND
+    let head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+    head.x = (head.x + GRID) % GRID;
+    head.y = (head.y + GRID) % GRID;
     lastDirRef.current = dir;
 
-    // wall collision
-    if (head.x < 0 || head.y < 0 || head.x >= GRID || head.y >= GRID) {
-      stateRef.current.dead = true;
-      setRunning(false);
-    }
-
-    // self collision
-    if (!stateRef.current.dead && snake.some((s) => s.x === head.x && s.y === head.y)) {
+    // self collision kills
+    if (snake.some((s) => s.x === head.x && s.y === head.y)) {
       stateRef.current.dead = true;
       setRunning(false);
     }
 
     if (!stateRef.current.dead) {
       snake.unshift(head);
+
       // food
-      if (head.x === food.x && head.y === food.y) {
+      if (head.x === stateRef.current.food.x && head.y === stateRef.current.food.y) {
         stateRef.current.food = newFood(snake);
         stateRef.current.score++;
+        // speed up with growth
+        startLoop(speedForLength(snake.length));
+        // play eat sound
+        playEat();
       } else {
         snake.pop();
       }
@@ -89,7 +136,8 @@ export default function Snake() {
 
     // draw
     ctx.clearRect(0, 0, GRID * CELL, GRID * CELL);
-    // grid (optional subtle)
+
+    // subtle grid
     ctx.globalAlpha = 0.1;
     ctx.strokeStyle = '#334155';
     for (let i = 0; i <= GRID; i++) {
@@ -98,13 +146,16 @@ export default function Snake() {
     }
     ctx.globalAlpha = 1;
 
-    // food
+    // FOOD: circle
+    const f = stateRef.current.food;
     ctx.fillStyle = '#f97316';
-    ctx.fillRect(food.x * CELL, food.y * CELL, CELL, CELL);
+    ctx.beginPath();
+    ctx.arc(f.x * CELL + CELL / 2, f.y * CELL + CELL / 2, CELL * 0.4, 0, Math.PI * 2);
+    ctx.fill();
 
-    // snake
+    // SNAKE
     ctx.fillStyle = '#60a5fa';
-    snake.forEach((s, i) => {
+    stateRef.current.snake.forEach((s, i) => {
       const pad = i === 0 ? 2 : 4;
       ctx.fillRect(s.x * CELL + pad, s.y * CELL + pad, CELL - pad * 2, CELL - pad * 2);
     });
@@ -113,8 +164,7 @@ export default function Snake() {
   function handleRestart() {
     reset();
     setRunning(true);
-    clearInterval(loopRef.current);
-    loopRef.current = setInterval(() => tick(), SPEED_MS);
+    startLoop(speedForLength(stateRef.current.snake.length));
   }
 
   const score = stateRef.current?.score ?? 0;
@@ -124,10 +174,17 @@ export default function Snake() {
     <div className="container">
       <BackLink />
       <h2 className="title">Snake</h2>
-      <p className="muted">Use arrow keys (or WASD). Score: {score}</p>
-      <div className="center">
-        <canvas ref={canvasRef} width={GRID * CELL} height={GRID * CELL} />
+      <p className="muted">Wrap‑around walls. Arrow keys / WASD. Score: {score}</p>
+
+      <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom: 8 }}>
+        <button className="btn" onClick={() => setSoundOn(s => !s)}>
+          {soundOn ? '🔊 Sound: On' : '🔈 Sound: Off'}
+        </button>
         {!running && dead && <button className="btn" onClick={handleRestart}>Restart</button>}
+      </div>
+
+      <div className="center" onMouseDown={ensureAudioReady}>
+        <canvas ref={canvasRef} width={GRID * CELL} height={GRID * CELL} />
       </div>
     </div>
   );

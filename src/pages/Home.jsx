@@ -10,8 +10,8 @@ export default function Home() {
       <div className="grid">
         <GameCard to="/snake" title="Snake">Eat the food. Don’t hit walls or yourself.</GameCard>
         <GameCard to="/tic-tac-toe" title="Tic‑Tac‑Toe">Beat a friend locally on one device.</GameCard>
-        <GameCard to="/jumper" title="Endless Jumper">Jump over obstacles. Space or click.</GameCard>
-        <GameCard to="/flappy" title="Flappy Clone">Navigate through pipes. Click or Space.</GameCard>
+        <GameCard to="/jumper" title="Jumper">Jump over obstacles. Space or click.</GameCard>
+        <GameCard to="/flappy" title="Flappy">Navigate through pipes. Click or Space.</GameCard>
       </div>
     </div>
   );
