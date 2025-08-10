@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <div className="container">
       <div className="header">
-        <h1 className="title">Mini‑Games Hub</h1>
+        <h1 className="title">Games Hub</h1>
         <span className="muted">Arrow keys / Space / Click to play</span>
       </div>
       <div className="grid">

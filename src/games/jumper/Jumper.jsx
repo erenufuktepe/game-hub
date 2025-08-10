@@ -116,6 +116,7 @@ export default function Jumper() {
     };
     const onClick = () => handleInput();
     const onTouchStart = (e) => {
+      if (isInteractive(e.target)) return;
       e.preventDefault();
       handleInput();
     };
@@ -302,7 +303,7 @@ export default function Jumper() {
   return (
     <div className="container" onMouseDown={ensureAudioReady}>
       <BackLink />
-      <h2 className="title">Endless Jumper</h2>
+      <h2 className="title">Jumper</h2>
       <p className="muted">
         Space / Click to start. Jump over ground blocks; don’t jump into the
         flying drones.

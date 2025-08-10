@@ -148,6 +148,7 @@ export default function Flappy() {
     };
     const onClick = () => handleInput();
     const onTouchStart = (e) => {
+      if (isInteractive(e.target)) return;
       e.preventDefault();
       handleInput();
     };
@@ -292,7 +293,7 @@ export default function Flappy() {
   return (
     <div className="container" onMouseDown={ensureAudioReady}>
       <BackLink />
-      <h2 className="title">Flappy Clone</h2>
+      <h2 className="title">Flappy</h2>
       <p className="muted">
         Space / Click to {dead ? "restart" : running ? "flap" : "start"}. Pass
         pipes to score.
